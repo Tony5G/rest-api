@@ -1,0 +1,3082 @@
+openapi: 3.0.1
+info:
+  title: Rest API Documentation
+  description: "<b><h2>Introduction</h2></b>\n\nThis API is based on historical intraday\
+    \ and end-of-day market data, provided by iVolatility team.\n\n<b><h2>Authentication</h2></b>\n\
+    \nTo get access for data, you will need to get bearer token, using GET /token/get\
+    \ method. Your IVolatility login and password are required. After 30 minutes session\
+    \ you will need to refresh your token, as previous one will expire.\n\nIf you\
+    \ don’t want to use tokens, then you can specify your IVolatility login and password\
+    \ directly in your data queries.\n\n<b><h2>Limitations</h2></b>\n\nIf number of\
+    \ records in result set is more than 500, then result set is saved to a file with\
+    \ GZIP compression asynchronously. The client gets HTTP response in JSON format\
+    \ with a link through which it will be possible to download the file (when it\
+    \ will be ready).\nExample:\nHTTP/1.1 200 OK\nServer: nginx/0.6.31\nContent-Language:\
+    \ en\nContent-Type: application/octet-stream\nConnection: close\n\n{ status:\n\
+    \n{ executionTime: 1958, recordsFound: 30702, code: 'PENDING', urlForDetails:\
+    \ '/rest/v2/results?login=test1&token=78FD2DEA286ED8AF1A3122C1368152D5EF5DDC55C51902F92DF5D5B83B57F3BDE715CB98F3899E41387861A96EC7C825&path=/test1/90eb69f2-fa30-4310-9606-fae4c4074a3b/'\
+    \ }\n, query: { dateFrom: '2018-06-18 15:59', dateTill: '2018-06-19 09:00', symbols:\
+    \ 'AAPL' }, data: [ ] }\n\nFormation of the resulting file on the service side\
+    \ takes some time. Upon completion, the user can download requested data as file. "
+  version: "1.0"
+servers:
+- url: http://localhost:7093
+  description: Generated server url
+tags:
+- name: Historical Volatility
+  description: Realized (historical) volatility data
+- name: Intraday Equity Prices
+  description: Intraday equity quotes with volume
+- name: Options Prices (NBBO)
+  description: Daily close options prices for all options with volumes and open interests
+    of each option
+- name: Underlying Prices
+  description: "Daily open, high, low, close prices with volume"
+- name: IV Surface
+  description: A surface normalized by moneyness and maturity built on 'raw' IV basis
+    by interpolation
+- name: Intraday Equity Options Prices
+  description: "Intraday equity options quotes with iv&greeks, volume and open interest"
+- name: IV Index
+  description: "A weighted ATM measure of a stocks expected volatility estimated for\
+    \ 1, 2, 3, 4, 5, 6, 9 months and 1,2,3 years"
+- name: RawIV
+  description: Actual implied volatility and Greeks based on the full string for the
+    listed contracts
+paths:
+  /token/get:
+    get:
+      tags:
+      - Get API Token
+      operationId: Get Token
+      parameters:
+      - name: username
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /quotes/token:
+    get:
+      tags:
+      - option-controller
+      operationId: getToken
+      parameters:
+      - name: username
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /quotes/options:
+    get:
+      tags:
+      - option-controller
+      operationId: options
+      parameters:
+      - name: symbol
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: strikeMin
+        in: query
+        required: false
+        schema:
+          type: number
+          format: double
+      - name: strikeMax
+        in: query
+        required: false
+        schema:
+          type: number
+          format: double
+      - name: expMin
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: expMax
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /quotes/options/realtime:
+    get:
+      tags:
+      - option-controller
+      operationId: optionsRealtime
+      parameters:
+      - name: symbols
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /quotes/options/delayed:
+    get:
+      tags:
+      - option-controller
+      operationId: optionsDelayed
+      parameters:
+      - name: symbols
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /proxy/yield:
+    get:
+      tags:
+      - proxy-controller
+      operationId: getEodYield
+      parameters:
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: symbol
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /proxy/underlying-info:
+    get:
+      tags:
+      - proxy-controller
+      operationId: getEodUnderlyingInfo
+      parameters:
+      - name: username
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: symbol
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: region
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /proxy/realtime-stocks:
+    get:
+      tags:
+      - proxy-controller
+      operationId: getRealtimeStocks
+      parameters:
+      - name: symbol
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /proxy/option-series:
+    get:
+      tags:
+      - proxy-controller
+      operationId: getOptionSeries
+      parameters:
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: symbol
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: expFrom
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: expTo
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: strikeFrom
+        in: query
+        required: false
+        schema:
+          type: number
+          format: double
+      - name: strikeTo
+        in: query
+        required: false
+        schema:
+          type: number
+          format: double
+      - name: callPut
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OptionSeries'
+  /proxy/interest-rates:
+    get:
+      tags:
+      - proxy-controller
+      operationId: getEodInterestRates
+      parameters:
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: till
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /proxy/eod-stocks-options-data:
+    get:
+      tags:
+      - proxy-controller
+      operationId: getEodStocksOptionsData
+      parameters:
+      - name: symbol
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: date
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /proxy/eod-stock-data:
+    get:
+      tags:
+      - proxy-controller
+      operationId: getEodStocksData
+      parameters:
+      - name: symbol
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: till
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /proxy/eod-single-stock-option-data:
+    get:
+      tags:
+      - proxy-controller
+      operationId: getEodSingleStockOptionData
+      parameters:
+      - name: symbol
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: till
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: expDate
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: strike
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: type
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /proxy/eod-single-future-data:
+    get:
+      tags:
+      - proxy-controller
+      operationId: getEodSingleFutureData
+      parameters:
+      - name: symbol
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: till
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: futExp
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /proxy/eod-futures-single-option-data:
+    get:
+      tags:
+      - proxy-controller
+      operationId: getEodFuturesSingleOptionData
+      parameters:
+      - name: symbol
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: futExp
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: optExp
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: strike
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: type
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: till
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /proxy/eod-futures-options-data:
+    get:
+      tags:
+      - proxy-controller
+      operationId: getEodFuturesOptionsData
+      parameters:
+      - name: symbol
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: date
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: futExp
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /proxy/eod-futures-data:
+    get:
+      tags:
+      - proxy-controller
+      operationId: getEodFuturesData
+      parameters:
+      - name: symbol
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: date
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /proxy/delayed-stocks:
+    get:
+      tags:
+      - proxy-controller
+      operationId: getDelayedStocks
+      parameters:
+      - name: symbol
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /futures/prices:
+    get:
+      tags:
+      - futures-controller
+      operationId: getPrices
+      parameters:
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: rootSymbol
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: futureSymbols
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: expDate
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /futures/prices/options:
+    get:
+      tags:
+      - futures-controller
+      operationId: getPricesOptionSymbol
+      parameters:
+      - name: optionSymbol
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /futures/options:
+    get:
+      tags:
+      - futures-controller
+      operationId: getOptions
+      parameters:
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: futureSymbol
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: optExpDate
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: moneyness
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - DEEP_OTM
+          - OTM
+          - ATM
+          - ITM
+          - DEEP_ITM
+      - name: optType
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - CALL
+          - PUT
+          - ALL
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /futures/market-structure:
+    get:
+      tags:
+      - futures-controller
+      operationId: getMarketStructure
+      parameters:
+      - name: futureSymbol
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /dd/single/{type}:
+    get:
+      tags:
+      - data-download-controller
+      operationId: singleStockOption
+      parameters:
+      - name: type
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: username
+        in: query
+        description: User personal login
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        description: User personal password
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        description: REST API session token
+        required: false
+        schema:
+          type: string
+      - name: symbol
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseMapStringObject'
+  /dd/intraday/equity/prices:
+    get:
+      tags:
+      - Intraday Equity Prices
+      operationId: Intraday Equity Quotes
+      parameters:
+      - name: username
+        in: query
+        description: User personal login
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        description: User personal password
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        description: REST API session token
+        required: false
+        schema:
+          type: string
+      - name: symbol
+        in: query
+        description: Equity ticker
+        required: true
+        schema:
+          type: string
+      - name: date
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: minuteType
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - MINUTE_1
+          - MINUTE_5
+          - MINUTE_15
+          - MINUTE_30
+          - HOUR
+          - CUSTOM
+      - name: minutes
+        in: query
+        description: "Comma separated list of required minutes. Use it, when minuteType\
+          \ is set to CUSTOM."
+        required: false
+        schema:
+          type: string
+      responses:
+        "500":
+          description: Internal server error
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseIntradayEquityPrices'
+        "204":
+          description: No data found for requested date
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseIntradayEquityPrices'
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseIntradayEquityPrices'
+  /dd/intraday/equity/options:
+    get:
+      tags:
+      - Intraday Equity Options Prices
+      operationId: Intraday Equity Options Data with IV&greeks
+      parameters:
+      - name: username
+        in: query
+        description: User personal login
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        description: User personal password
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        description: REST API session token
+        required: false
+        schema:
+          type: string
+      - name: symbol
+        in: query
+        description: Equity ticker
+        required: true
+        schema:
+          type: string
+      - name: date
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: expDate
+        in: query
+        description: Date of stock options expiration
+        required: false
+        schema:
+          type: string
+      - name: strike
+        in: query
+        description: Stock option's strike value
+        required: false
+        schema:
+          type: number
+          format: float
+      - name: optType
+        in: query
+        description: Call (C) or Put (P)
+        required: false
+        schema:
+          type: string
+          enum:
+          - CALL
+          - PUT
+          - ALL
+      - name: minuteType
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - MINUTE_1
+          - MINUTE_5
+          - MINUTE_15
+          - MINUTE_30
+          - HOUR
+          - CUSTOM
+      - name: minutes
+        in: query
+        description: "Comma separated list of required minutes. Use it, when minuteType\
+          \ is set to CUSTOM."
+        required: false
+        schema:
+          type: string
+      responses:
+        "500":
+          description: Internal server error
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseIntradayEquityOptions'
+        "204":
+          description: No data found for requested date
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseIntradayEquityOptions'
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseIntradayEquityOptions'
+  /dd/eod/futures/rawiv:
+    get:
+      tags:
+      - RawIV
+      operationId: End-Of-Day Futures Raw IV
+      parameters:
+      - name: username
+        in: query
+        description: User personal login
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        description: User personal password
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        description: REST API session token
+        required: false
+        schema:
+          type: string
+      - name: symbol
+        in: query
+        description: Underlying ticker
+        required: true
+        schema:
+          type: string
+      - name: date
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: from
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: region
+        in: query
+        description: Underlying region
+        required: false
+        schema:
+          type: string
+          default: USA
+          enum:
+          - USA
+          - EUROPE
+          - ASIA
+          - CANADA
+      responses:
+        "500":
+          description: Internal server error
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodFuturesRawIv'
+        "204":
+          description: No data found for requested date
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodFuturesRawIv'
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodFuturesRawIv'
+  /dd/eod/futures/prices:
+    get:
+      tags:
+      - Underlying Prices
+      operationId: End-Of-Day Futures Prices
+      parameters:
+      - name: username
+        in: query
+        description: User personal login
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        description: User personal password
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        description: REST API session token
+        required: false
+        schema:
+          type: string
+      - name: symbol
+        in: query
+        description: Underlying ticker
+        required: true
+        schema:
+          type: string
+      - name: date
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: from
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: region
+        in: query
+        description: Underlying region
+        required: false
+        schema:
+          type: string
+          default: USA
+          enum:
+          - USA
+          - EUROPE
+          - ASIA
+          - CANADA
+      responses:
+        "500":
+          description: Internal server error
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodFuturesPrices'
+        "204":
+          description: No data found for requested date
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodFuturesPrices'
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodFuturesPrices'
+  /dd/eod/futures/optnbbo:
+    get:
+      tags:
+      - Options Prices (NBBO)
+      operationId: End-Of-Day Futures NBBO
+      parameters:
+      - name: username
+        in: query
+        description: User personal login
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        description: User personal password
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        description: REST API session token
+        required: false
+        schema:
+          type: string
+      - name: symbol
+        in: query
+        description: Underlying ticker
+        required: true
+        schema:
+          type: string
+      - name: date
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: from
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: region
+        in: query
+        description: Underlying region
+        required: false
+        schema:
+          type: string
+          default: USA
+          enum:
+          - USA
+          - EUROPE
+          - ASIA
+          - CANADA
+      responses:
+        "500":
+          description: Internal server error
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodFuturesOptnbbo'
+        "204":
+          description: No data found for requested date
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodFuturesOptnbbo'
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodFuturesOptnbbo'
+  /dd/eod/futures/ivx:
+    get:
+      tags:
+      - IV Index
+      operationId: End-Of-Day Futures IVX
+      parameters:
+      - name: username
+        in: query
+        description: User personal login
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        description: User personal password
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        description: REST API session token
+        required: false
+        schema:
+          type: string
+      - name: symbol
+        in: query
+        description: Underlying ticker
+        required: true
+        schema:
+          type: string
+      - name: date
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: from
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: region
+        in: query
+        description: Underlying region
+        required: false
+        schema:
+          type: string
+          default: USA
+          enum:
+          - USA
+          - EUROPE
+          - ASIA
+          - CANADA
+      responses:
+        "500":
+          description: Internal server error
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodFuturesIvx'
+        "204":
+          description: No data found for requested date
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodFuturesIvx'
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodFuturesIvx'
+  /dd/eod/futures/ivs:
+    get:
+      tags:
+      - IV Surface
+      operationId: End-Of-Day Futures IV Surface
+      parameters:
+      - name: username
+        in: query
+        description: User personal login
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        description: User personal password
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        description: REST API session token
+        required: false
+        schema:
+          type: string
+      - name: symbol
+        in: query
+        description: Underlying ticker
+        required: true
+        schema:
+          type: string
+      - name: date
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: from
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: region
+        in: query
+        description: Underlying region
+        required: false
+        schema:
+          type: string
+          default: USA
+          enum:
+          - USA
+          - EUROPE
+          - ASIA
+          - CANADA
+      responses:
+        "500":
+          description: Internal server error
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodFuturesIvs'
+        "204":
+          description: No data found for requested date
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodFuturesIvs'
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodFuturesIvs'
+  /dd/eod/futures/hv:
+    get:
+      tags:
+      - Historical Volatility
+      operationId: End-Of-Day Futures HV
+      parameters:
+      - name: username
+        in: query
+        description: User personal login
+        required: false
+        schema:
+          type: string
+        example: Vasya
+      - name: password
+        in: query
+        description: User personal password
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        description: REST API session token
+        required: false
+        schema:
+          type: string
+      - name: symbol
+        in: query
+        description: Underlying ticker
+        required: true
+        schema:
+          type: string
+      - name: date
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: from
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: region
+        in: query
+        description: Underlying region
+        required: false
+        schema:
+          type: string
+          default: USA
+          enum:
+          - USA
+          - EUROPE
+          - ASIA
+          - CANADA
+      responses:
+        "500":
+          description: Internal server error
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodFuturesHv'
+        "204":
+          description: No data found for requested date
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodFuturesHv'
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodFuturesHv'
+  /dd/eod/equity/rawiv:
+    get:
+      tags:
+      - RawIV
+      operationId: End-Of-Day Equity Raw IV
+      parameters:
+      - name: username
+        in: query
+        description: User personal login
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        description: User personal password
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        description: REST API session token
+        required: false
+        schema:
+          type: string
+      - name: symbol
+        in: query
+        description: Underlying ticker
+        required: true
+        schema:
+          type: string
+      - name: date
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: from
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: region
+        in: query
+        description: Underlying region
+        required: false
+        schema:
+          type: string
+          default: USA
+          enum:
+          - USA
+          - EUROPE
+          - ASIA
+          - CANADA
+      responses:
+        "500":
+          description: Internal server error
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodEquityRawIv'
+        "204":
+          description: No data found for requested date
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodEquityRawIv'
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodEquityRawIv'
+  /dd/eod/equity/prices:
+    get:
+      tags:
+      - Underlying Prices
+      operationId: End-Of-Day Equity Prices
+      parameters:
+      - name: username
+        in: query
+        description: User personal login
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        description: User personal password
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        description: REST API session token
+        required: false
+        schema:
+          type: string
+      - name: symbol
+        in: query
+        description: Underlying ticker
+        required: true
+        schema:
+          type: string
+      - name: date
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: from
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: region
+        in: query
+        description: Underlying region
+        required: false
+        schema:
+          type: string
+          default: USA
+          enum:
+          - USA
+          - EUROPE
+          - ASIA
+          - CANADA
+      responses:
+        "500":
+          description: Internal server error
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodEquityPrices'
+        "204":
+          description: No data found for requested date
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodEquityPrices'
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodEquityPrices'
+  /dd/eod/equity/optnbbo:
+    get:
+      tags:
+      - Options Prices (NBBO)
+      operationId: End-Of-Day Equity NBBO
+      parameters:
+      - name: username
+        in: query
+        description: User personal login
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        description: User personal password
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        description: REST API session token
+        required: false
+        schema:
+          type: string
+      - name: symbol
+        in: query
+        description: Underlying ticker
+        required: true
+        schema:
+          type: string
+      - name: date
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: from
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: region
+        in: query
+        description: Underlying region
+        required: false
+        schema:
+          type: string
+          default: USA
+          enum:
+          - USA
+          - EUROPE
+          - ASIA
+          - CANADA
+      responses:
+        "500":
+          description: Internal server error
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodEquityOptnbbo'
+        "204":
+          description: No data found for requested date
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodEquityOptnbbo'
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodEquityOptnbbo'
+  /dd/eod/equity/ivx:
+    get:
+      tags:
+      - IV Index
+      operationId: End-Of-Day Equity IVX
+      parameters:
+      - name: username
+        in: query
+        description: User personal login
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        description: User personal password
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        description: REST API session token
+        required: false
+        schema:
+          type: string
+      - name: symbol
+        in: query
+        description: Underlying ticker
+        required: true
+        schema:
+          type: string
+      - name: date
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: from
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: region
+        in: query
+        description: Underlying region
+        required: false
+        schema:
+          type: string
+          default: USA
+          enum:
+          - USA
+          - EUROPE
+          - ASIA
+          - CANADA
+      responses:
+        "500":
+          description: Internal server error
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodEquityIvx'
+        "204":
+          description: No data found for requested date
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodEquityIvx'
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodEquityIvx'
+  /dd/eod/equity/ivs:
+    get:
+      tags:
+      - IV Surface
+      operationId: End-Of-Day Equity IV Surface
+      parameters:
+      - name: username
+        in: query
+        description: User personal login
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        description: User personal password
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        description: REST API session token
+        required: false
+        schema:
+          type: string
+      - name: symbol
+        in: query
+        description: Underlying ticker
+        required: true
+        schema:
+          type: string
+      - name: date
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: from
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: region
+        in: query
+        description: Underlying region
+        required: false
+        schema:
+          type: string
+          default: USA
+          enum:
+          - USA
+          - EUROPE
+          - ASIA
+          - CANADA
+      responses:
+        "500":
+          description: Internal server error
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodEquityIvs'
+        "204":
+          description: No data found for requested date
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodEquityIvs'
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodEquityIvs'
+  /dd/eod/equity/hv:
+    get:
+      tags:
+      - Historical Volatility
+      operationId: End-Of-Day Equity HV
+      parameters:
+      - name: username
+        in: query
+        description: User personal login
+        required: false
+        schema:
+          type: string
+      - name: password
+        in: query
+        description: User personal password
+        required: false
+        schema:
+          type: string
+      - name: token
+        in: query
+        description: REST API session token
+        required: false
+        schema:
+          type: string
+      - name: symbol
+        in: query
+        description: Underlying ticker
+        required: true
+        schema:
+          type: string
+      - name: date
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: from
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        description: "Trading date, specified in yyyy-MM-dd format"
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: region
+        in: query
+        description: Underlying region
+        required: false
+        schema:
+          type: string
+          default: USA
+          enum:
+          - USA
+          - EUROPE
+          - ASIA
+          - CANADA
+      responses:
+        "500":
+          description: Internal server error
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodEquityHv'
+        "204":
+          description: No data found for requested date
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodEquityHv'
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestApiResponseEodEquityHv'
+components:
+  schemas:
+    OptionSeries:
+      type: object
+      properties:
+        stockSymbol:
+          type: string
+        optionSymbol:
+          type: string
+        expirationDate:
+          type: string
+          format: date
+        strike:
+          type: number
+          format: double
+        callPut:
+          type: string
+    Query:
+      type: object
+      properties:
+        requestUUID:
+          type: string
+    RestApiResponseMapStringObject:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+        query:
+          $ref: '#/components/schemas/Query'
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              type: object
+    Status:
+      type: object
+      properties:
+        executionTime:
+          type: integer
+          format: int64
+        recordsFound:
+          type: integer
+          format: int64
+        code:
+          type: string
+        urlForDetails:
+          type: string
+        queriesLeftEOD:
+          type: integer
+          format: int64
+        queriesLeftIntraday:
+          type: integer
+          format: int64
+    IntradayEquityPrices:
+      type: object
+      properties:
+        timestamp:
+          type: string
+        stockId:
+          type: integer
+          format: int64
+        stockSymbol:
+          type: string
+        type:
+          type: string
+        currency:
+          type: string
+        bidPrice:
+          type: number
+          format: double
+        askPrice:
+          type: number
+          format: double
+        lastPrice:
+          type: number
+          format: double
+        bidDateTime:
+          type: string
+        askDateTime:
+          type: string
+        lastDateTime:
+          type: string
+        bidSize:
+          type: integer
+          format: int32
+        askSize:
+          type: integer
+          format: int32
+        lastSize:
+          type: integer
+          format: int32
+        bidExchange:
+          type: string
+        askExchange:
+          type: string
+        lastExchange:
+          type: string
+        volume:
+          type: integer
+          format: int64
+        calcTimestamp:
+          type: string
+    RestApiResponseIntradayEquityPrices:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+        query:
+          $ref: '#/components/schemas/Query'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/IntradayEquityPrices'
+    IntradayEquityOptions:
+      type: object
+      properties:
+        timestamp:
+          type: string
+        stockId:
+          type: integer
+          format: int64
+        stockSymbol:
+          type: string
+        optionExpirationDate:
+          type: string
+        optionStrike:
+          type: number
+          format: double
+        optionType:
+          type: string
+        optionStyle:
+          type: string
+        optionSymbol:
+          type: string
+        optionBidPrice:
+          type: number
+          format: double
+        optionAskPrice:
+          type: number
+          format: double
+        optionBidDateTime:
+          type: string
+        optionAskDateTime:
+          type: string
+        optionBidSize:
+          type: integer
+          format: int32
+        optionAskSize:
+          type: integer
+          format: int32
+        optionBidExchange:
+          type: string
+        optionAskExchange:
+          type: string
+        optionVolume:
+          type: integer
+          format: int32
+        optionIv:
+          type: number
+          format: double
+        underlyingPrice:
+          type: number
+          format: double
+        optionDelta:
+          type: number
+          format: double
+        optionGamma:
+          type: number
+          format: double
+        optionTheta:
+          type: number
+          format: double
+        optionVega:
+          type: number
+          format: double
+        optionRho:
+          type: number
+          format: double
+        optionPreIv:
+          type: number
+          format: double
+        optionImpliedYield:
+          type: number
+          format: double
+        calcTimestamp:
+          type: string
+    RestApiResponseIntradayEquityOptions:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+        query:
+          $ref: '#/components/schemas/Query'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/IntradayEquityOptions'
+    EodFuturesRawIv:
+      type: object
+      properties:
+        date:
+          type: string
+        symbol:
+          type: string
+        exchange:
+          type: string
+        expiration:
+          type: string
+        strike:
+          type: number
+          format: double
+        style:
+          type: string
+        ask:
+          type: number
+          format: double
+        bid:
+          type: number
+          format: double
+        iv:
+          type: number
+          format: double
+        volume:
+          type: integer
+          format: int32
+        delta:
+          type: number
+          format: double
+        vega:
+          type: number
+          format: double
+        gamma:
+          type: number
+          format: double
+        theta:
+          type: number
+          format: double
+        record_no:
+          type: integer
+          format: int64
+        option_root_symbol:
+          type: string
+        future_symbol:
+          type: string
+        future_expiration:
+          type: string
+        adjusted_close:
+          type: number
+          format: double
+        call/put:
+          type: string
+        settlement_price:
+          type: number
+          format: double
+        iv_interpolated:
+          type: number
+          format: double
+        open_interest:
+          type: integer
+          format: int32
+    RestApiResponseEodFuturesRawIv:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+        query:
+          $ref: '#/components/schemas/Query'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EodFuturesRawIv'
+    EodFuturesPrices:
+      type: object
+      properties:
+        date:
+          type: string
+        symbol:
+          type: string
+        exchange:
+          type: string
+        bid:
+          type: number
+          format: double
+        ask:
+          type: number
+          format: double
+        volume:
+          type: integer
+          format: int64
+        record_no:
+          type: integer
+          format: int64
+        future_symbol:
+          type: string
+        future_expiration:
+          type: string
+        open_price:
+          type: number
+          format: double
+        high_price:
+          type: number
+          format: double
+        low_price:
+          type: number
+          format: double
+        close_price:
+          type: number
+          format: double
+        open_interest:
+          type: integer
+          format: int64
+    RestApiResponseEodFuturesPrices:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+        query:
+          $ref: '#/components/schemas/Query'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EodFuturesPrices'
+    EodFuturesOptnbbo:
+      type: object
+      properties:
+        date:
+          type: string
+        symbol:
+          type: string
+        exchange:
+          type: string
+        expiration:
+          type: string
+        strike:
+          type: number
+          format: double
+        style:
+          type: string
+        ask:
+          type: number
+          format: double
+        bid:
+          type: number
+          format: double
+        volume:
+          type: number
+          format: double
+        record_no:
+          type: integer
+          format: int64
+        option_root_symbol:
+          type: string
+        future_symbol:
+          type: string
+        future_expiration:
+          type: string
+        adjusted_close:
+          type: number
+          format: double
+        call/put:
+          type: string
+        settlement_price:
+          type: number
+          format: double
+        open_interest:
+          type: number
+          format: double
+    RestApiResponseEodFuturesOptnbbo:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+        query:
+          $ref: '#/components/schemas/Query'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EodFuturesOptnbbo'
+    EodFuturesIvx:
+      type: object
+      properties:
+        date:
+          type: string
+        symbol:
+          type: string
+        exchange:
+          type: string
+        record_no:
+          type: integer
+          format: int64
+        "30d_iv_call":
+          type: string
+        "30d_iv_put":
+          type: string
+        "30d_iv_mean":
+          type: string
+        "60d_iv_call":
+          type: string
+        "60d_iv_put":
+          type: string
+        "60d_iv_mean":
+          type: string
+        "90d_iv_call":
+          type: string
+        "90d_iv_put":
+          type: string
+        "90d_iv_mean":
+          type: string
+        "120d_iv_call":
+          type: string
+        "120d_iv_put":
+          type: string
+        "120d_iv_mean":
+          type: string
+        "150d_iv_call":
+          type: string
+        "150d_iv_put":
+          type: string
+        "150d_iv_mean":
+          type: string
+        "180d_iv_call":
+          type: string
+        "180d_iv_put":
+          type: string
+        "180d_iv_mean":
+          type: string
+        "270d_iv_call":
+          type: string
+        "270d_iv_put":
+          type: string
+        "270d_iv_mean":
+          type: string
+        "360d_iv_call":
+          type: string
+        "360d_iv_put":
+          type: string
+        "360d_iv_mean":
+          type: string
+        "720d_iv_call":
+          type: string
+        "720d_iv_put":
+          type: string
+        "720d_iv_mean":
+          type: string
+        "1080d_iv_call":
+          type: string
+        "1080d_iv_put":
+          type: string
+        "1080d_iv_mean":
+          type: string
+    RestApiResponseEodFuturesIvx:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+        query:
+          $ref: '#/components/schemas/Query'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EodFuturesIvx'
+    EodFuturesIvs:
+      type: object
+      properties:
+        date:
+          type: string
+        symbol:
+          type: string
+        exchange:
+          type: string
+        period:
+          type: integer
+          format: int32
+        iv:
+          type: number
+          format: double
+        record_no:
+          type: integer
+          format: int64
+        out-of-the-money_%:
+          type: integer
+          format: int32
+        call/put:
+          type: string
+    RestApiResponseEodFuturesIvs:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+        query:
+          $ref: '#/components/schemas/Query'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EodFuturesIvs'
+    EodFuturesHv:
+      type: object
+      properties:
+        date:
+          type: string
+        symbol:
+          type: string
+        exchange:
+          type: string
+        price:
+          type: number
+          format: double
+        testEnum:
+          type: string
+          enum:
+          - A
+          - B
+          - C
+        recordNumber:
+          type: integer
+          format: int64
+          example: 1000
+        "5d_hv":
+          type: string
+        "10d_hv":
+          type: string
+        "20d_hv":
+          type: string
+        "40d_hv":
+          type: string
+        "60d_hv":
+          type: string
+        "80d_hv":
+          type: string
+        "100d_hv":
+          type: string
+        "120d_hv":
+          type: string
+        "180d_hv":
+          type: string
+        "250d_hv":
+          type: string
+      description: My Eod Futures Hv model
+    RestApiResponseEodFuturesHv:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+        query:
+          $ref: '#/components/schemas/Query'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EodFuturesHv'
+    EodEquityRawIv:
+      type: object
+      properties:
+        symbol:
+          type: string
+        exchange:
+          type: string
+        date:
+          type: string
+        expiration:
+          type: string
+        strike:
+          type: number
+          format: double
+        style:
+          type: string
+        ask:
+          type: number
+          format: double
+        bid:
+          type: number
+          format: double
+        iv:
+          type: number
+          format: double
+        volume:
+          type: integer
+          format: int32
+        delta:
+          type: number
+          format: double
+        vega:
+          type: number
+          format: double
+        gamma:
+          type: number
+          format: double
+        theta:
+          type: number
+          format: double
+        rho:
+          type: number
+          format: double
+        record_no:
+          type: integer
+          format: int64
+        adjusted_close:
+          type: number
+          format: double
+        option_symbol:
+          type: string
+        call/put:
+          type: string
+        mean_price:
+          type: number
+          format: double
+        open_interest:
+          type: integer
+          format: int32
+        stock_price_for_iv:
+          type: number
+          format: double
+        '*':
+          type: string
+    RestApiResponseEodEquityRawIv:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+        query:
+          $ref: '#/components/schemas/Query'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EodEquityRawIv'
+    EodEquityPrices:
+      type: object
+      properties:
+        date:
+          type: string
+        symbol:
+          type: string
+        exchange:
+          type: string
+        open:
+          type: number
+          format: double
+        high:
+          type: number
+          format: double
+        low:
+          type: number
+          format: double
+        close:
+          type: number
+          format: double
+        volume:
+          type: number
+          format: double
+        record_no:
+          type: integer
+          format: int64
+        unadjusted_close:
+          type: number
+          format: double
+    RestApiResponseEodEquityPrices:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+        query:
+          $ref: '#/components/schemas/Query'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EodEquityPrices'
+    EodEquityOptnbbo:
+      type: object
+      properties:
+        symbol:
+          type: string
+        exchange:
+          type: string
+        date:
+          type: string
+        expiration:
+          type: string
+        strike:
+          type: number
+          format: double
+        style:
+          type: string
+        ask:
+          type: number
+          format: double
+        bid:
+          type: number
+          format: double
+        volume:
+          type: integer
+          format: int32
+        unadjusted:
+          type: number
+          format: double
+        record_no:
+          type: integer
+          format: int64
+        adjusted_close:
+          type: number
+          format: double
+        option_symbol:
+          type: string
+        call/put:
+          type: string
+        open_interest:
+          type: integer
+          format: int32
+    RestApiResponseEodEquityOptnbbo:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+        query:
+          $ref: '#/components/schemas/Query'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EodEquityOptnbbo'
+    EodEquityIvx:
+      type: object
+      properties:
+        symbol:
+          type: string
+        exchange:
+          type: string
+        date:
+          type: string
+        price:
+          type: number
+          format: double
+        record_no:
+          type: integer
+          format: int64
+        "30d_iv_call":
+          type: number
+          format: double
+        "30d_iv_put":
+          type: number
+          format: double
+        "30d_iv_mean":
+          type: number
+          format: double
+        "60d_iv_call":
+          type: number
+          format: double
+        "60d_iv_put":
+          type: number
+          format: double
+        "60d_iv_mean":
+          type: number
+          format: double
+        "90d_iv_call":
+          type: number
+          format: double
+        "90d_iv_put":
+          type: number
+          format: double
+        "90d_iv_mean":
+          type: number
+          format: double
+        "120d_iv_call":
+          type: number
+          format: double
+        "120d_iv_put":
+          type: number
+          format: double
+        "120d_iv_mean":
+          type: number
+          format: double
+        "150d_iv_call":
+          type: number
+          format: double
+        "150d_iv_put":
+          type: number
+          format: double
+        "150d_iv_mean":
+          type: number
+          format: double
+        "180d_iv_call":
+          type: number
+          format: double
+        "180d_iv_put":
+          type: number
+          format: double
+        "180d_iv_mean":
+          type: number
+          format: double
+        "270d_iv_call":
+          type: number
+          format: double
+        "270d_iv_put":
+          type: number
+          format: double
+        "270d_iv_mean":
+          type: number
+          format: double
+        "360d_iv_call":
+          type: number
+          format: double
+        "360d_iv_put":
+          type: number
+          format: double
+        "360d_iv_mean":
+          type: number
+          format: double
+        "720d_iv_call":
+          type: number
+          format: double
+        "720d_iv_put":
+          type: number
+          format: double
+        "720d_iv_mean":
+          type: number
+          format: double
+        "1080d_iv_call":
+          type: number
+          format: double
+        "1080d_iv_put":
+          type: number
+          format: double
+        "1080d_iv_mean":
+          type: number
+          format: double
+    RestApiResponseEodEquityIvx:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+        query:
+          $ref: '#/components/schemas/Query'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EodEquityIvx'
+    EodEquityIvs:
+      type: object
+      properties:
+        symbol:
+          type: string
+        exchange:
+          type: string
+        date:
+          type: string
+        period:
+          type: string
+        strike:
+          type: number
+          format: double
+        iv:
+          type: number
+          format: double
+        delta:
+          type: number
+          format: double
+        record_no:
+          type: integer
+          format: int64
+        out-of-the-money_%:
+          type: integer
+          format: int32
+        call/put:
+          type: string
+    RestApiResponseEodEquityIvs:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+        query:
+          $ref: '#/components/schemas/Query'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EodEquityIvs'
+    EodEquityHv:
+      type: object
+      properties:
+        symbol:
+          type: string
+        exchange:
+          type: string
+        date:
+          type: string
+        price:
+          type: number
+          format: double
+        record_no:
+          type: integer
+          format: int64
+        "10d_hv":
+          type: number
+          format: double
+        "20d_hv":
+          type: number
+          format: double
+        "30d_hv":
+          type: number
+          format: double
+        "60d_hv":
+          type: number
+          format: double
+        "90d_hv":
+          type: number
+          format: double
+        "120d_hv":
+          type: number
+          format: double
+        "150d_hv":
+          type: number
+          format: double
+        "180d_hv":
+          type: number
+          format: double
+    RestApiResponseEodEquityHv:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+        query:
+          $ref: '#/components/schemas/Query'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EodEquityHv'
